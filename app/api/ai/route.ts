@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getAuthedClient } from '@/lib/api-auth'
 
 const CHANNEL_PROMPTS: Record<string, string> = {
   discord: `Generate a Discord community announcement post. Be casual, friendly, use emoji sparingly.
@@ -82,6 +82,9 @@ Position as a better/different alternative to existing tools.`,
 
 export async function POST(req: NextRequest) {
   try {
+    const { supabase, userId, error } = await getAuthedClient(req)
+    if (error) return error
+
     const { product, channels, campaignId } = await req.json()
 
     if (!product || !channels || !Array.isArray(channels)) {
@@ -150,9 +153,10 @@ Generate the content now. Output ONLY the content, no preamble.`,
 
     // Log generation
     if (campaignId) {
-      await supabase.from('ai_generations').insert({
+      await supabase!.from('ai_generations').insert({
         product_id: product.id,
         campaign_id: campaignId,
+        user_id: userId,
         generated_content: results,
         model: 'gpt-4o-mini',
       })
