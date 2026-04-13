@@ -146,7 +146,11 @@ export default function CampaignsPage() {
     setStep("generate");
 
     try {
-      const channelTypes = selectedChannels.map((c) => c.channel_type);
+      const channelTypes = [...new Set([
+        ...selectedChannels.map((c) => c.channel_type),
+        // Always generate for guided platforms too
+        "hackernews", "producthunt", "indiehackers", "betalist", "alternativeto",
+      ])];
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -577,7 +581,59 @@ export default function CampaignsPage() {
                     ))}
                   </div>
 
-                  {/* Schedule inputs */}
+                  {/* Guided submission for platforms without API */}
+                  {Object.keys(editedContent).some((k) =>
+                    ["hackernews", "producthunt", "indiehackers", "betalist", "alternativeto"].includes(k)
+                  ) && (
+                    <div className="mt-6 p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
+                      <p className="text-xs text-[var(--text-dim)] uppercase tracking-wider mb-3 font-semibold">
+                        Guided Submission (manual publish)
+                      </p>
+                      <p className="text-[var(--text-muted)] text-xs mb-4">
+                        These platforms require manual submission. Copy the AI-generated content and submit via their website.
+                      </p>
+                      <div className="space-y-3">
+                        {[
+                          { key: "hackernews", label: "Hacker News", icon: "▲", color: "#FF6600", url: "https://news.ycombinator.com/submit" },
+                          { key: "producthunt", label: "Product Hunt", icon: "🅿️", color: "#DA552F", url: "https://www.producthunt.com/posts/new" },
+                          { key: "indiehackers", label: "Indie Hackers", icon: "IH", color: "#4756D7", url: "https://www.indiehackers.com/post/new" },
+                          { key: "betalist", label: "BetaList", icon: "β", color: "#FF6B00", url: "https://betalist.com/submit" },
+                          { key: "alternativeto", label: "AlternativeTo", icon: "AT", color: "#2563EB", url: "https://alternativeto.net/manage/new-listing/" },
+                        ].filter((p) => editedContent[p.key]).map((p) => (
+                          <div key={p.key} className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border)]">
+                            <div className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0"
+                              style={{ background: `${p.color}20`, color: p.color }}>
+                              {p.icon}
+                            </div>
+                            <span className="text-sm font-medium min-w-[100px]">{p.label}</span>
+                            <div className="flex items-center gap-2 ml-auto">
+                              <button
+                                onClick={() => navigator.clipboard.writeText(editedContent[p.key] || "")}
+                                className="px-3 py-1.5 rounded-lg text-xs text-[var(--cyan)] border border-[var(--cyan)]/30 hover:bg-[var(--cyan-dim)] transition-all cursor-pointer flex items-center gap-1.5"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                                </svg>
+                                Copy
+                              </button>
+                              <a
+                                href={p.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 rounded-lg text-xs text-[var(--text-muted)] border border-[var(--border-light)] hover:text-[var(--text)] hover:border-[var(--text-muted)] transition-all flex items-center gap-1.5"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><path d="M15 3h6v6" /><path d="M10 14L21 3" />
+                                </svg>
+                                Open
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                  }
                   <div className="mt-6 p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
                     <p className="text-xs text-[var(--text-dim)] uppercase tracking-wider mb-3 font-semibold">Schedule (optional)</p>
                     <div className="flex items-center gap-3">
