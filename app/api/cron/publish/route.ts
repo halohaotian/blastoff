@@ -1,15 +1,8 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-// Vercel Cron: runs every minute to process scheduled publish tasks
-
-export async function GET(req: Request) {
-  // Verify this is a Vercel cron call
-  const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+// Process all due scheduled publish tasks
+async function processScheduledTasks() {
   const results: { published: string[]; failed: string[] } = { published: [], failed: [] }
 
   // Fetch all scheduled tasks that are due
@@ -110,8 +103,28 @@ export async function GET(req: Request) {
     }
   }
 
+  return results
+}
+
+// GET: Vercel Cron trigger (daily)
+export async function GET(req: Request) {
+  const authHeader = req.headers.get('authorization')
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const results = await processScheduledTasks()
   return NextResponse.json({
-    message: `Processed ${tasks.length} tasks`,
+    message: 'Cron processed',
+    ...results,
+  })
+}
+
+// POST: Manual trigger from dashboard
+export async function POST() {
+  const results = await processScheduledTasks()
+  return NextResponse.json({
+    message: 'Manual trigger processed',
     ...results,
   })
 }
