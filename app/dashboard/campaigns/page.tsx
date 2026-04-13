@@ -29,7 +29,7 @@ interface Campaign {
   created_at: string;
   scheduled_at: string | null;
   products: { name: string; tagline: string | null; website_url: string | null } | null;
-  publish_tasks: { id: string; channel_account_id: string; status: string; scheduled_at: string | null }[];
+  publish_tasks: { id: string; channel_account_id: string; status: string; scheduled_at: string | null; published_at: string | null; error_message: string | null }[];
 }
 
 type WizardStep = "product" | "channels" | "generate" | "review";
@@ -657,7 +657,7 @@ export default function CampaignsPage() {
                   key={c.id}
                   className="rounded-xl bg-[var(--bg-card)] border border-[var(--border)] p-5 hover:border-[var(--border-light)] transition-all"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-3 mb-1">
                         <h3 className="font-semibold text-sm truncate">
@@ -666,43 +666,58 @@ export default function CampaignsPage() {
                         <StatusBadge status={c.status} />
                       </div>
                       {c.products?.tagline && (
-                        <p className="text-[var(--text-muted)] text-xs mb-2 truncate">{c.products.tagline}</p>
+                        <p className="text-[var(--text-muted)] text-xs truncate">{c.products.tagline}</p>
                       )}
-                      <div className="flex items-center gap-4 text-xs text-[var(--text-dim)]">
+                      <div className="flex items-center gap-4 text-xs text-[var(--text-dim)] mt-1">
                         <span>Created {new Date(c.created_at).toLocaleDateString()}</span>
                         {c.scheduled_at && (
                           <span className="text-[var(--purple)]">
                             Scheduled {new Date(c.scheduled_at).toLocaleString()}
                           </span>
                         )}
-                        {c.publish_tasks && c.publish_tasks.length > 0 && (
-                          <span>{c.publish_tasks.length} task{c.publish_tasks.length !== 1 ? "s" : ""}</span>
-                        )}
                       </div>
                     </div>
-                    {/* Channel icons */}
-                    {c.publish_tasks && c.publish_tasks.length > 0 && (
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {c.publish_tasks.map((t, i) => (
-                          <div
-                            key={t.id || i}
-                            className="w-7 h-7 rounded-md bg-[var(--surface)] flex items-center justify-center text-xs"
-                            title={t.status}
-                          >
-                            {t.status === "published" ? (
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5">
-                                <path d="M5 13l4 4L19 7" />
-                              </svg>
-                            ) : (
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-                              </svg>
+                  </div>
+                  {/* Detailed publish task status */}
+                  {c.publish_tasks && c.publish_tasks.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-2">
+                      {c.publish_tasks.map((t, i) => (
+                        <div key={t.id || i} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`w-2 h-2 rounded-full ${
+                                t.status === "published" ? "bg-[var(--green)]" :
+                                t.status === "failed" ? "bg-[var(--coral)]" :
+                                t.status === "scheduled" ? "bg-[var(--purple)]" :
+                                "bg-[var(--text-dim)]"
+                              }`}
+                            />
+                            <span className="text-[var(--text-muted)] capitalize">{t.status}</span>
+                            {t.published_at && (
+                              <span className="text-[var(--text-dim)]">
+                                {new Date(t.published_at).toLocaleString()}
+                              </span>
                             )}
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                          {t.status === "failed" && (
+                            <button
+                              onClick={async () => {
+                                await fetch("/api/publish-status", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ taskId: t.id }),
+                                });
+                                fetchCampaigns();
+                              }}
+                              className="px-2 py-0.5 rounded text-[var(--cyan)] hover:bg-[var(--cyan-dim)] transition-all cursor-pointer"
+                            >
+                              Retry
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

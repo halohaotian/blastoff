@@ -5,11 +5,18 @@ import Link from "next/link";
 interface Product { id: string; name: string; tagline: string | null; description: string; website_url: string | null; pricing_model: string | null; categories: string[]; tags: string[]; created_at: string; }
 interface Campaign { id: string; name: string; status: string; product_id: string; created_at: string; products?: { name: string } | null; }
 interface Channel { id: string; channel_type: string; account_name: string | null; status: string; }
+interface PublishTask {
+  id: string; status: string; scheduled_at: string | null; published_at: string | null;
+  error_message: string | null; platform_post_id: string | null;
+  channel_accounts: { channel_type: string; account_name: string | null };
+  campaigns: { name: string; products: { name: string } };
+}
 
 export default function DashboardPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [publishTasks, setPublishTasks] = useState<PublishTask[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,10 +24,12 @@ export default function DashboardPage() {
       fetch("/api/products").then((r) => r.json()),
       fetch("/api/campaigns").then((r) => r.json()),
       fetch("/api/channels").then((r) => r.json()),
-    ]).then(([p, c, ch]) => {
+      fetch("/api/publish-status").then((r) => r.json()),
+    ]).then(([p, c, ch, pt]) => {
       setProducts(Array.isArray(p) ? p : []);
       setCampaigns(Array.isArray(c) ? c : []);
       setChannels(Array.isArray(ch) ? ch : []);
+      setPublishTasks(Array.isArray(pt) ? pt : []);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -131,6 +140,44 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* Publish Status */}
+        {publishTasks.length > 0 && (
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-[family-name:var(--font-d)] font-bold text-lg">Recent Publishes</h2>
+          </div>
+          <div className="space-y-3">
+            {publishTasks.slice(0, 8).map((t) => {
+              const statusStyles: Record<string, { bg: string; text: string }> = {
+                published: { bg: "bg-[var(--green)]/10", text: "text-[var(--green)]" },
+                scheduled: { bg: "bg-[var(--purple)]/10", text: "text-[var(--purple)]" },
+                publishing: { bg: "bg-[var(--cyan)]/10", text: "text-[var(--cyan)]" },
+                failed: { bg: "bg-[var(--coral)]/10", text: "text-[var(--coral)]" },
+                draft: { bg: "bg-[var(--text-dim)]/10", text: "text-[var(--text-muted)]" },
+              };
+              const s = statusStyles[t.status] || statusStyles.draft;
+              return (
+                <div key={t.id} className="flex items-center justify-between rounded-xl bg-[var(--bg-card)] border border-[var(--border)] p-4">
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">{t.campaigns?.products?.name || "Unknown"}</p>
+                    <p className="text-[var(--text-muted)] text-xs mt-0.5">
+                      {t.channel_accounts?.channel_type} {t.channel_accounts?.account_name ? `(${t.channel_accounts.account_name})` : ""}
+                    </p>
+                    {t.error_message && <p className="text-[var(--coral)] text-xs mt-1 truncate">{t.error_message}</p>}
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-[var(--text-dim)] text-xs">
+                      {t.published_at ? new Date(t.published_at).toLocaleDateString() : t.scheduled_at ? `Scheduled ${new Date(t.scheduled_at).toLocaleDateString()}` : ""}
+                    </span>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${s.bg} ${s.text}`}>{t.status}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        )}
       </div>
     </div>
   );
