@@ -12,6 +12,12 @@ interface DashboardStats {
   conversion_rate: number;
 }
 
+interface AuthStats {
+  total_users: number;
+  today_users: number;
+  week_users: number;
+}
+
 interface Signup {
   uid: string;
   uemail: string;
@@ -27,10 +33,12 @@ interface Trend {
   tvisits: number;
   tclicks: number;
   tsignups: number;
+  tauth_signups: number;
 }
 
 export default function AdminPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [authStats, setAuthStats] = useState<AuthStats | null>(null);
   const [signups, setSignups] = useState<Signup[]>([]);
   const [trends, setTrends] = useState<Trend[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +48,7 @@ export default function AdminPage() {
       .then((r) => r.json())
       .then((data) => {
         setStats(data.stats);
+        setAuthStats(data.auth_stats);
         setSignups(data.recent_signups || []);
         setTrends(data.trends || []);
         setLoading(false);
@@ -53,6 +62,7 @@ export default function AdminPage() {
       .then((r) => r.json())
       .then((data) => {
         setStats(data.stats);
+        setAuthStats(data.auth_stats);
         setSignups(data.recent_signups || []);
         setTrends(data.trends || []);
         setLoading(false);
@@ -90,17 +100,19 @@ export default function AdminPage() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           {[
-            { label: "Total Waitlist", value: stats?.total_waitlist ?? 0, today: stats?.today_waitlist ?? 0, color: "var(--coral)" },
-            { label: "Total Visits", value: stats?.total_visits ?? 0, today: stats?.today_visits ?? 0, color: "var(--cyan)" },
-            { label: "CTA Clicks", value: stats?.total_clicks ?? 0, today: stats?.today_clicks ?? 0, color: "var(--purple)" },
-            { label: "Conversion Rate", value: `${stats?.conversion_rate ?? 0}%`, today: null, color: "var(--green)" },
+            { label: "Total Users", value: authStats?.total_users ?? 0, today: authStats?.today_users ?? 0, week: authStats?.week_users ?? 0, color: "var(--green)" },
+            { label: "Waitlist", value: stats?.total_waitlist ?? 0, today: stats?.today_waitlist ?? 0, week: null, color: "var(--coral)" },
+            { label: "Page Visits", value: stats?.total_visits ?? 0, today: stats?.today_visits ?? 0, week: null, color: "var(--cyan)" },
+            { label: "CTA Clicks", value: stats?.total_clicks ?? 0, today: stats?.today_clicks ?? 0, week: null, color: "var(--purple)" },
+            { label: "Conversion", value: `${stats?.conversion_rate ?? 0}%`, today: null, week: null, color: "var(--green)" },
           ].map((card, i) => (
             <div key={i} className="rounded-xl bg-[var(--bg-card)] border border-[var(--border)] p-5">
               <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider mb-2">{card.label}</p>
               <p className="text-2xl font-bold" style={{ color: card.color }}>{typeof card.value === "number" ? card.value.toLocaleString() : card.value}</p>
               {card.today !== null && <p className="text-xs text-[var(--text-dim)] mt-1">+{card.today} today</p>}
+              {card.week !== null && card.week !== undefined && <p className="text-xs text-[var(--text-dim)] mt-0.5">+{card.week} this week</p>}
             </div>
           ))}
         </div>
@@ -115,20 +127,29 @@ export default function AdminPage() {
               ) : (
                 trends.slice().reverse().map((t) => {
                   const maxVisits = Math.max(...trends.map((x) => x.tvisits), 1);
+                  const maxSignups = Math.max(...trends.map((x) => x.tsignups), 1);
                   const visitWidth = (t.tvisits / maxVisits) * 100;
-                  const signupWidth = t.tsignups > 0 ? (t.tsignups / Math.max(...trends.map((x) => x.tsignups), 1)) * 100 : 0;
+                  const signupWidth = t.tsignups > 0 ? (t.tsignups / maxSignups) * 100 : 0;
                   return (
                     <div key={t.tdate} className="flex items-center gap-3 text-sm">
                       <span className="text-[var(--text-dim)] w-20 shrink-0 font-mono text-xs">{t.tdate.slice(5)}</span>
-                      <div className="flex-1 flex flex-col gap-1">
+                      <div className="flex-1 flex flex-col gap-0.5">
                         <div className="flex items-center gap-2">
-                          <div className="h-2 rounded-full bg-[var(--cyan)]" style={{ width: `${Math.max(visitWidth, 2)}%` }} />
+                          <div className="h-1.5 rounded-full bg-[var(--cyan)]" style={{ width: `${Math.max(visitWidth, 2)}%` }} />
                           <span className="text-[var(--text-muted)] text-xs w-8">{t.tvisits}</span>
                         </div>
-                        {t.tsignups > 0 && (
+                        {(t.tsignups > 0 || t.tauth_signups > 0) && (
                           <div className="flex items-center gap-2">
-                            <div className="h-2 rounded-full bg-[var(--coral)]" style={{ width: `${Math.max(signupWidth, 4)}%` }} />
-                            <span className="text-[var(--coral)] text-xs w-8">{t.tsignups}</span>
+                            {t.tsignups > 0 && (
+                              <div className="h-1.5 rounded-full bg-[var(--coral)]" style={{ width: `${Math.max(signupWidth, 4)}%` }} />
+                            )}
+                            {t.tauth_signups > 0 && (
+                              <div className="h-1.5 rounded-full bg-[var(--green)]" style={{ width: `${Math.max((t.tauth_signups / maxSignups) * 100, 4)}%` }} />
+                            )}
+                            <span className="text-xs w-16">
+                              {t.tsignups > 0 && <span className="text-[var(--coral)]">{t.tsignups}wl </span>}
+                              {t.tauth_signups > 0 && <span className="text-[var(--green)]">{t.tauth_signups}reg</span>}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -140,7 +161,8 @@ export default function AdminPage() {
             </div>
             <div className="flex items-center gap-6 mt-4 text-xs text-[var(--text-dim)]">
               <span className="flex items-center gap-1"><span className="w-3 h-1 rounded-full bg-[var(--cyan)] inline-block" /> Visits</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-1 rounded-full bg-[var(--coral)] inline-block" /> Signups</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-1 rounded-full bg-[var(--coral)] inline-block" /> Waitlist</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-1 rounded-full bg-[var(--green)] inline-block" /> Users Registered</span>
             </div>
           </div>
 
