@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://blastoff.jianhui.dev"),
+  alternates: { canonical: "https://blastoff.jianhui.dev" },
   title: "Blastoff — Launch Your Product Everywhere in 5 Minutes",
   description:
     "AI-powered product launch platform. Describe your product once, we generate platform-perfect content and distribute it to Product Hunt, Reddit, Twitter, Hacker News, and 10+ more channels automatically.",
@@ -20,6 +22,9 @@ export const metadata: Metadata = {
     description:
       "One input, 12+ platforms, zero hassle. AI writes the content, we handle the distribution.",
     type: "website",
+    url: "https://blastoff.jianhui.dev",
+    siteName: "Blastoff",
+    images: [{ url: "/og-default.png", width: 1200, height: 630, alt: "Blastoff" }],
   },
 };
 
